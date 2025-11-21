@@ -1,6 +1,10 @@
 import cv2
+import torch
+import torch.nn as nn
+from torchvision import models, transforms
+from PIL import Image
 
-from mediapipe_service import get_face_landmarks, draw_landmarks, get_center_point, get_tip_of_nose, \
+from .mediapipe_service import get_face_landmarks, draw_landmarks, get_center_point, get_tip_of_nose, \
     check_eyes_open, check_vertical_rotation
 
 
@@ -63,3 +67,38 @@ def classify_image(img):
         print("is valid:", is_valid_photo)
 
         return {"is_valid_photo": is_valid_photo, 'comment': "..."}
+
+
+def classify_glasses(img):
+
+    device = torch.device("cuda" if torch.cuda.is_available() else "cpu")
+    model = models.resnet50(weights=models.ResNet50_Weights.IMAGENET1K_V1)
+
+    model.fc = nn.Sequential(
+        nn.Dropout(0.5),
+        nn.Linear(model.fc.in_features, 2)
+    )
+
+    # Load trained weights
+    model.load_state_dict(torch.load("data/best_model.pth", map_location=device))
+
+    model.to(device)
+    model.eval()
+
+    transform_eval = transforms.Compose([
+    transforms.Resize((224, 224)),
+    transforms.ToTensor()
+])
+
+    # Convert cv2 image (numpy array, BGR) to PIL Image (RGB)
+    img_rgb = cv2.cvtColor(img, cv2.COLOR_BGR2RGB)
+    img = Image.fromarray(img_rgb)
+    x = transform_eval(img).unsqueeze(0).to(device)
+
+    with torch.no_grad():
+        out = model(x)
+        pred = out.argmax(1).item()
+
+    classes = ["anyglasses", "no_anyglasses"]
+    return classes[pred]
+
