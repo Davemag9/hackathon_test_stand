@@ -1,5 +1,6 @@
 from fastapi import APIRouter, UploadFile, File, HTTPException
 from src.classification_serice import classify_image
+from src.utils import image_bytes_to_cv2
 
 classify_photo_router = APIRouter()
 
@@ -10,7 +11,8 @@ async def classify_photo(file: UploadFile = File(...)):
 
     # Read file bytes
     image_bytes = await file.read()
+    cv_image = image_bytes_to_cv2(image_bytes)
 
-    result = classify_image(image_bytes)
+    result = classify_image(cv_image)
 
     return {"filename": file.filename, "classification": result}
