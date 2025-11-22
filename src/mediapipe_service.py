@@ -7,7 +7,7 @@ mp_face_mesh = mp.solutions.face_mesh
 mp_drawing = mp.solutions.drawing_utils
 mp_drawing_styles = mp.solutions.drawing_styles
 
-VERTICAL_ROT_ANGLE_THRESHOLD = 1.5  # degrees
+VERTICAL_ROT_ANGLE_THRESHOLD = 20  # degrees
 
 # --- Configuration ---
 EAR_THRESHOLD = 0.25  # Threshold below which the eye is considered closed
@@ -147,8 +147,8 @@ def check_iris_centered(landmarks, eye_idxs, image, draw_contours=False):
     # Check if the iris is within the center region of the eye
     center_x = (min_x + max_x) // 2
     center_y = (min_y + max_y) // 2
-    tolerance_x = (max_x - min_x) * 0.05
-    tolerance_y = (max_y - min_y) * 0.1
+    tolerance_x = (max_x - min_x) * 0.25
+    tolerance_y = (max_y - min_y) * 0.25
 
     is_centered = (
             (abs(iris_x - center_x) <= tolerance_x)
@@ -263,14 +263,13 @@ def get_vertical_centerline(landmarks, img):
     else:
         tan = abs(horizontal_shift) / (abs(vertical_shift) + 1e-10)
     angle = math.degrees(math.atan(tan))
-    signed_angle = math.degrees(math.atan2(horizontal_shift, vertical_shift))
     # print(f"Angle: {angle}")
-    return signed_angle, pA, pB
+    return angle, pA, pB
 
 
 def check_vertical_rotation(landmarks, img):
     angle, pA, pB = get_vertical_centerline(landmarks, img)
-    return abs(angle) <= VERTICAL_ROT_ANGLE_THRESHOLD, angle
+    return angle <= VERTICAL_ROT_ANGLE_THRESHOLD, angle
 
 
 # background consistent color detection

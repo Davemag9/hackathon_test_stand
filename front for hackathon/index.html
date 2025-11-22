@@ -1,0 +1,44 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Photo Classifier</title>
+    <link rel="stylesheet" href="style.css">
+</head>
+<body>
+    <div class="container">
+        <h1>Photo Classifier</h1>
+        <p class="subtitle">Take a photo and check if it meets the requirements</p>
+        
+        <div class="camera-section">
+            <video id="video" autoplay playsinline></video>
+            <canvas id="canvas" style="display: none;"></canvas>
+            <img id="captured-photo" alt="Captured photo" style="display: none;">
+        </div>
+        
+        <div class="controls">
+            <button id="start-camera" class="btn btn-primary">Start Camera</button>
+            <button id="capture-btn" class="btn btn-capture" disabled>Capture Photo</button>
+            <button id="retake-btn" class="btn btn-secondary" style="display: none;">Retake</button>
+            <button id="send-btn" class="btn btn-send" style="display: none;">Send to API</button>
+            <button id="live-analysis-btn" class="btn btn-live" disabled>Start Live Analysis</button>
+        </div>
+        
+        <div id="loading" class="loading" style="display: none;">
+            <div class="spinner"></div>
+            <p>Sending photo to API...</p>
+        </div>
+        
+        <div id="results" class="results" style="display: none;">
+            <h2>Analysis Results</h2>
+            <div id="results-content"></div>
+        </div>
+        
+        <div id="error" class="error" style="display: none;"></div>
+    </div>
+    
+    <script src="script.js"></script>
+</body>
+</html>
+
