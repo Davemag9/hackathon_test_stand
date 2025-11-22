@@ -6,23 +6,12 @@ from fastapi.middleware.cors import CORSMiddleware
 from src.router import classify_photo_router
 app = FastAPI()
 
-origins = [
-    "http://localhost:3000",
-    "http://localhost",
-    "http://93.115.23.34/",
-    "http://93.115.23.34:80",
-    "https://93.115.23.34:80",
-    "https://xtayl.com",
-    "http://xtayl.com",
-    "chrome-extension://*"
-]
-
 app.add_middleware(
     CORSMiddleware,
-    allow_origins=origins,
-    allow_credentials=True,
-    allow_methods=["*"],
-    allow_headers=["*"],
+    allow_origins=["*"],
+    allow_credentials=False,
+    allow_methods=["POST"],
+    allow_headers=["accept", "Content-Type"],
 )
 
 @app.get ("/")
