@@ -5,7 +5,7 @@ from torchvision import models, transforms
 from PIL import Image
 
 from .mediapipe_service import get_face_landmarks, draw_landmarks, get_center_point, get_tip_of_nose, \
-    check_eyes_open, check_vertical_rotation
+    check_eyes_open, check_vertical_rotation, check_eyes_centered
 
 # Global variables for model, device, and transform (loaded once at module import)
 _model = None
@@ -16,7 +16,7 @@ _transform_eval = None
 def _load_model():
     """Load the model once at module import time"""
     global _model, _device, _transform_eval
-    
+
     if _model is None:
         _device = torch.device("cuda" if torch.cuda.is_available() else "cpu")
         _model = models.resnet50(weights=models.ResNet50_Weights.IMAGENET1K_V1)
@@ -77,6 +77,8 @@ def classify_image(img):
         is_vertical_straight = check_vertical_rotation(landmarks, img)
         is_valid_photo &= (is_vertical_straight == True)
 
+        eyes_centered = check_eyes_centered(landmarks, img)
+        is_valid_photo &= eyes_centered
 
         # ----- demo code, can be removed --------------------------------------------
         # geo_center_point = get_center_point(landmarks, img.shape[0], img.shape[1])
@@ -93,16 +95,19 @@ def classify_image(img):
         # draw_landmarks(img, landmarks)
         # ------------------------------------------------------------------------------
 
-
         print("centered:", is_centered)
         print("eyes open:", open_eye_status)
         print("not rotated:", is_vertical_straight)
+        print("eyes centered:", eyes_centered)
 
         print("is valid:", is_valid_photo)
 
-        return {"is_centered": is_centered, 
-        "open_eye_status": open_eye_status, 
-        "is_vertical_straight": is_vertical_straight}
+        return {
+            "is_centered": is_centered,
+            "open_eye_status": open_eye_status,
+            "is_vertical_straight": is_vertical_straight,
+            "eyes_centered": eyes_centered,
+        }
 
 
 def classify_glasses(img):
@@ -117,4 +122,3 @@ def classify_glasses(img):
 
     classes = ["anyglasses", "no_anyglasses"]
     return classes[pred]
-

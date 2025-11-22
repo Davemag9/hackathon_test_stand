@@ -7,7 +7,7 @@ mp_face_mesh = mp.solutions.face_mesh
 mp_drawing = mp.solutions.drawing_utils
 mp_drawing_styles = mp.solutions.drawing_styles
 
-VERTICAL_ROT_ANGLE_THRESHOLD = 1.5 # degrees
+VERTICAL_ROT_ANGLE_THRESHOLD = 1.5  # degrees
 
 # --- Configuration ---
 EAR_THRESHOLD = 0.25  # Threshold below which the eye is considered closed
@@ -110,6 +110,61 @@ def get_tip_of_nose(landmarks, H, W):
     tip_x = int(lm.x * W)
     tip_y = int(lm.y * H)
     return (tip_x, tip_y)
+
+
+def check_iris_centered(landmarks, eye_idxs, image, draw_contours=False):
+    """
+    Checks if the iris is centered within the eye region.
+    """
+    H, W, _ = image.shape
+
+    # Extract the 6 required points in pixel coordinates
+    eye_points_pixel = []
+    for idx in eye_idxs:
+        lm = landmarks.landmark[idx]
+        pixel_x = int(lm.x * W)
+        pixel_y = int(lm.y * H)
+        eye_points_pixel.append((pixel_x, pixel_y))
+
+    # Calculate the bounding box of the eye
+    x_coords = [pt[0] for pt in eye_points_pixel]
+    y_coords = [pt[1] for pt in eye_points_pixel]
+    min_x, max_x = min(x_coords), max(x_coords)
+    min_y, max_y = min(y_coords), max(y_coords)
+
+    # Get the iris center (landmark 468 for left eye, 473 for right eye)
+    iris_idx = 468 if eye_idxs == LEFT_EYE_IDXS else 473
+    iris_lm = landmarks.landmark[iris_idx]
+    iris_x = int(iris_lm.x * W)
+    iris_y = int(iris_lm.y * H)
+
+    # Check if the iris is within the center region of the eye
+    center_x = (min_x + max_x) // 2
+    center_y = (min_y + max_y) // 2
+    tolerance_x = (max_x - min_x) * 0.05
+    tolerance_y = (max_y - min_y) * 0.1
+
+    is_centered = (
+            (abs(iris_x - center_x) <= tolerance_x)
+            and (abs(iris_y - center_y) <= tolerance_y))
+
+    if draw_contours:
+        # Draw the eye bounding box
+        cv2.rectangle(image, (min_x, min_y), (max_x, max_y), (255, 255, 0), 1)
+
+        # Draw the iris position
+        cv2.circle(image, (iris_x, iris_y), 2, (0, 255, 255), -1)
+
+        # Draw the center region
+        cv2.circle(image, (center_x, center_y), int(tolerance_x), (0, 255, 0), 1)
+
+    return is_centered
+
+
+def check_eyes_centered(landmarks, img):
+    left_centered = check_iris_centered(landmarks, LEFT_EYE_IDXS, img, draw_contours=False)
+    right_centered = check_iris_centered(landmarks, RIGHT_EYE_IDXS, img, draw_contours=False)
+    return left_centered and right_centered
 
 
 def euclidean_distance(point1, point2):
