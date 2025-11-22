@@ -7,6 +7,40 @@ from PIL import Image
 from .mediapipe_service import get_face_landmarks, draw_landmarks, get_center_point, get_tip_of_nose, \
     check_eyes_open, check_vertical_rotation
 
+# Global variables for model, device, and transform (loaded once at module import)
+_model = None
+_device = None
+_transform_eval = None
+
+
+def _load_model():
+    """Load the model once at module import time"""
+    global _model, _device, _transform_eval
+    
+    if _model is None:
+        _device = torch.device("cuda" if torch.cuda.is_available() else "cpu")
+        _model = models.resnet50(weights=models.ResNet50_Weights.IMAGENET1K_V1)
+
+        _model.fc = nn.Sequential(
+            nn.Dropout(0.5),
+            nn.Linear(_model.fc.in_features, 2)
+        )
+
+        # Load trained weights
+        _model.load_state_dict(torch.load("data/best_model.pth", map_location=_device))
+
+        _model.to(_device)
+        _model.eval()
+
+        _transform_eval = transforms.Compose([
+            transforms.Resize((224, 224)),
+            transforms.ToTensor()
+        ])
+
+
+# Load model when module is imported
+_load_model()
+
 
 def check_face_centered(landmarks, img, tolerance_bbox=(20, 20)):
     geo_center_point = get_center_point(landmarks, img.shape[0], img.shape[1])
@@ -45,18 +79,18 @@ def classify_image(img):
 
 
         # ----- demo code, can be removed --------------------------------------------
-        geo_center_point = get_center_point(landmarks, img.shape[0], img.shape[1])
-        tip_of_nose_point = get_tip_of_nose(landmarks, img.shape[0], img.shape[1])
+        # geo_center_point = get_center_point(landmarks, img.shape[0], img.shape[1])
+        # tip_of_nose_point = get_tip_of_nose(landmarks, img.shape[0], img.shape[1])
 
-        cv2.circle(img, geo_center_point, 7, (0, 0, 255), -1)
-        cv2.circle(img, tip_of_nose_point, 6, (0, 255, 0), -1)
+        # cv2.circle(img, geo_center_point, 7, (0, 0, 255), -1)
+        # cv2.circle(img, tip_of_nose_point, 6, (0, 255, 0), -1)
 
-        cv2.rectangle(
-            img,
-            (geo_center_point[0] - 10, geo_center_point[1] - 10),
-            (geo_center_point[0] + 10, geo_center_point[1] + 10),
-            (0, 0, 255), 2)
-        draw_landmarks(img, landmarks)
+        # cv2.rectangle(
+        #     img,
+        #     (geo_center_point[0] - 10, geo_center_point[1] - 10),
+        #     (geo_center_point[0] + 10, geo_center_point[1] + 10),
+        #     (0, 0, 255), 2)
+        # draw_landmarks(img, landmarks)
         # ------------------------------------------------------------------------------
 
 
@@ -66,37 +100,19 @@ def classify_image(img):
 
         print("is valid:", is_valid_photo)
 
-        return {"is_valid_photo": is_valid_photo, 'comment': "..."}
+        return {"is_centered": is_centered, 
+        "open_eye_status": open_eye_status, 
+        "is_vertical_straight": is_vertical_straight}
 
 
 def classify_glasses(img):
-
-    device = torch.device("cuda" if torch.cuda.is_available() else "cpu")
-    model = models.resnet50(weights=models.ResNet50_Weights.IMAGENET1K_V1)
-
-    model.fc = nn.Sequential(
-        nn.Dropout(0.5),
-        nn.Linear(model.fc.in_features, 2)
-    )
-
-    # Load trained weights
-    model.load_state_dict(torch.load("data/best_model.pth", map_location=device))
-
-    model.to(device)
-    model.eval()
-
-    transform_eval = transforms.Compose([
-    transforms.Resize((224, 224)),
-    transforms.ToTensor()
-])
-
     # Convert cv2 image (numpy array, BGR) to PIL Image (RGB)
     img_rgb = cv2.cvtColor(img, cv2.COLOR_BGR2RGB)
     img = Image.fromarray(img_rgb)
-    x = transform_eval(img).unsqueeze(0).to(device)
+    x = _transform_eval(img).unsqueeze(0).to(_device)
 
     with torch.no_grad():
-        out = model(x)
+        out = _model(x)
         pred = out.argmax(1).item()
 
     classes = ["anyglasses", "no_anyglasses"]
