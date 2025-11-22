@@ -250,7 +250,7 @@ liveAnalysisBtn.addEventListener('click', () => {
         // Stop live analysis
         stopLiveAnalysis();
     } else {
-        // Start live analysis - 2 requests per second = every 500ms
+        // Start live analysis - 1 request per second = every 1000ms
         if (!stream) {
             showError('Please start the camera first');
             return;
@@ -264,7 +264,7 @@ liveAnalysisBtn.addEventListener('click', () => {
         // Show results section
         results.style.display = 'block';
 
-        // Start sending frames at 2 requests per second (every 500ms)
+        // Start sending frames at 1 request per second (every 1000ms)
         liveAnalysisInterval = setInterval(() => {
             sendFrameToAPI();
         }, 500);
@@ -284,14 +284,19 @@ function displayResults(data) {
     // Map possible field names from API to display labels
     // Handle both snake_case and different field name variations
     const fieldMappings = [
+        /*{
+            keys: ['is_valid_photo'],
+            label: 'Is Valid Photo',
+            invert: false // For 'not_rotated', if true then it's good (not rotated = good)
+        }*/
         {
             keys: ['no_glasses', 'is_valid', 'valid', 'has_glasses'],
-            label: 'No Glasses',
+            label: 'Nothing on the face(no glasses, no mask)',
             invert: false // true means glasses are bad, false means no glasses is good
         },
         {
             keys: ['is_centered', 'centered', 'center'],
-            label: 'Is Centered',
+            label: 'Face Is Centered',
             invert: false
         },
         {
@@ -300,10 +305,27 @@ function displayResults(data) {
             invert: false
         },
         {
+            keys: ['eyes_centered'],
+            label: 'Eyes Are Centered',
+            invert: false
+        },
+        {
             keys: ['is_vertical_straight', 'not_rotated', 'is_rotated', 'vertical_straight', 'rotated'],
             label: 'Is Vertical Straight',
             invert: false // For 'not_rotated', if true then it's good (not rotated = good)
-        }
+        },
+        {
+            keys: ['is_bg_uniform'],
+            label: 'Is Background Color Uniform',
+            invert: false // For 'not_rotated', if true then it's good (not rotated = good)
+        },
+        {
+            keys: ['is_bg_bright'],
+            label: 'Is Background Color Bright',
+            invert: false // For 'not_rotated', if true then it's good (not rotated = good)
+        },
+
+
     ];
 
     fieldMappings.forEach(mapping => {
@@ -363,6 +385,74 @@ function displayResults(data) {
     });
 
     resultsContent.innerHTML = resultItems.join('');
+
+    // Add report_info if available
+    if (data.report_info) {
+        let reportInfoHtml = '<div class="report-info" style="margin-top: 20px; padding: 15px; background: #e7f3ff; border-radius: 8px; border-left: 4px solid #2196F3;">';
+        reportInfoHtml += '<h3 style="color: #1976D2; margin-bottom: 15px; font-size: 1.2em;">Recommendations</h3>';
+
+        const adviceItems = [];
+
+        if (data.report_info['face center displacement']) {
+            const displacement = data.report_info['face center displacement'];
+            const xDisplacement = Math.abs(displacement[0]);
+            const yDisplacement = Math.abs(displacement[1]);
+
+            // Add advice for face centering
+            if (xDisplacement > 20 || yDisplacement > 20) {
+                let advice = '💡 <strong>Advice:</strong> ';
+                if (xDisplacement > 20) {
+                    if (displacement[0] > 0) {
+                        advice += 'Move your face slightly to the left. ';
+                    } else {
+                        advice += 'Move your face slightly to the right. ';
+                    }
+                }
+                if (yDisplacement > 20) {
+                    if (displacement[1] > 0) {
+                        advice += 'Move your face slightly up. ';
+                    } else {
+                        advice += 'Move your face slightly down. ';
+                    }
+                }
+                advice += 'Try to center your face in the frame.';
+                adviceItems.push(advice);
+            } else {
+                adviceItems.push('✓ Face is well-centered in the frame.');
+            }
+        }
+
+        if (data.report_info['head tilt'] !== undefined) {
+            const headTilt = data.report_info['head tilt'];
+            const tiltDegrees = Math.abs(headTilt - 180); // Calculate deviation from straight (180°)
+
+            // Add advice for head tilt
+            if (tiltDegrees > 5) {
+                let advice = '💡 <strong>Advice:</strong> ';
+                if (headTilt < 175) {
+                    advice += 'Tilt your head slightly to the right to straighten it. ';
+                } else if (headTilt > 185) {
+                    advice += 'Tilt your head slightly to the left to straighten it. ';
+                }
+                advice += 'Keep your head straight and level for the best photo.';
+                adviceItems.push(advice);
+            } else {
+                adviceItems.push('✓ Head is straight and properly aligned.');
+            }
+        }
+
+        // Add advice section if there are any advice items
+        if (adviceItems.length > 0) {
+            reportInfoHtml += '<ul style="list-style: none; padding-left: 0; margin: 0;">';
+            adviceItems.forEach(advice => {
+                reportInfoHtml += `<li style="margin-bottom: 8px; padding-left: 0;">${advice}</li>`;
+            });
+            reportInfoHtml += '</ul>';
+        }
+
+        reportInfoHtml += '</div>';
+        resultsContent.innerHTML += reportInfoHtml;
+    }
 
     // Add success message if all checks pass
     if (issues.length === 0) {
