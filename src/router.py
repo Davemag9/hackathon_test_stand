@@ -27,5 +27,6 @@ async def classify_photo(file: UploadFile = File(...)):
         "is_vertical_straight": result["is_vertical_straight"],
         "is_bg_uniform": result["is_bg_uniform"],
         "is_bg_bright": result["is_bg_bright"],
-        "is_valid_photo": result["is_valid_photo"]
+        "is_valid_photo": result["is_valid_photo"],
+        "report_info": result["report_info"]
     }

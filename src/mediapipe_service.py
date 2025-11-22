@@ -263,13 +263,14 @@ def get_vertical_centerline(landmarks, img):
     else:
         tan = abs(horizontal_shift) / (abs(vertical_shift) + 1e-10)
     angle = math.degrees(math.atan(tan))
+    signed_angle = math.degrees(math.atan2(horizontal_shift, vertical_shift))
     # print(f"Angle: {angle}")
-    return angle, pA, pB
+    return signed_angle, pA, pB
 
 
 def check_vertical_rotation(landmarks, img):
     angle, pA, pB = get_vertical_centerline(landmarks, img)
-    return angle <= VERTICAL_ROT_ANGLE_THRESHOLD
+    return abs(angle) <= VERTICAL_ROT_ANGLE_THRESHOLD, angle
 
 
 # background consistent color detection

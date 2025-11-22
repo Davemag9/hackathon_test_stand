@@ -49,10 +49,12 @@ def check_face_centered(landmarks, img, tolerance_bbox=(20, 20)):
     h_centered = abs(geo_center_point[0] - tip_of_nose_point[0]) <= tolerance_bbox[0]
     v_centered = abs(geo_center_point[1] - tip_of_nose_point[1]) <= tolerance_bbox[1]
 
+    h_shift = geo_center_point[0] - tip_of_nose_point[0]
+    v_shift = geo_center_point[1] - tip_of_nose_point[1]
     if h_centered and v_centered:
-        return True
+        return True, (h_shift, v_shift)
     else:
-        return False
+        return False, (h_shift, v_shift)
 
 
 def classify_image(img):
@@ -63,19 +65,23 @@ def classify_image(img):
         return {"label": "no_face_detected", "confidence": 0.0}
     else:
 
+        report_info = {}
+
         is_valid_photo = True
 
         # is centered check
-        is_centered = check_face_centered(landmarks, img)
+        is_centered, shift = check_face_centered(landmarks, img)
         is_valid_photo &= is_centered
+        report_info["face center displacement"] = shift
 
         # open eyes check
         open_eye_status, min_ear_score = check_eyes_open(landmarks, img)
         is_valid_photo &= (open_eye_status == True)
 
         # rotation check
-        is_vertical_straight = check_vertical_rotation(landmarks, img)
+        is_vertical_straight, angle = check_vertical_rotation(landmarks, img)
         is_valid_photo &= (is_vertical_straight == True)
+        report_info["head tilt"] = angle
 
         eyes_centered = check_eyes_centered(landmarks, img)
         is_valid_photo &= eyes_centered
@@ -115,7 +121,8 @@ def classify_image(img):
             "eyes_centered": bool(eyes_centered),
             "is_bg_uniform": bool(is_bg_uniform),
             "is_bg_bright": bool(is_bg_bright),
-            "is_valid_photo": bool(is_valid_photo)
+            "is_valid_photo": bool(is_valid_photo),
+            'report_info': report_info
         }
 
 
