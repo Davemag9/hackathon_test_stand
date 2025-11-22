@@ -4,8 +4,8 @@ import torch.nn as nn
 from torchvision import models, transforms
 from PIL import Image
 
-from .mediapipe_service import get_face_landmarks, draw_landmarks, get_center_point, get_tip_of_nose, \
-    check_eyes_open, check_vertical_rotation, check_eyes_centered
+from .mediapipe_service import get_face_landmarks, get_center_point, get_tip_of_nose, \
+    check_eyes_open, check_vertical_rotation, check_eyes_centered, is_background_consistent
 
 # Global variables for model, device, and transform (loaded once at module import)
 _model = None
@@ -80,6 +80,9 @@ def classify_image(img):
         eyes_centered = check_eyes_centered(landmarks, img)
         is_valid_photo &= eyes_centered
 
+        is_bg_uniform, is_bg_bright = is_background_consistent(img)
+        is_valid_photo &= (is_bg_uniform and is_bg_bright)
+
         # ----- demo code, can be removed --------------------------------------------
         # geo_center_point = get_center_point(landmarks, img.shape[0], img.shape[1])
         # tip_of_nose_point = get_tip_of_nose(landmarks, img.shape[0], img.shape[1])
@@ -100,13 +103,19 @@ def classify_image(img):
         print("not rotated:", is_vertical_straight)
         print("eyes centered:", eyes_centered)
 
+        print("background uniform:", is_bg_uniform)
+        print("background bright:", is_bg_bright)
+
         print("is valid:", is_valid_photo)
 
         return {
-            "is_centered": is_centered,
-            "open_eye_status": open_eye_status,
-            "is_vertical_straight": is_vertical_straight,
-            "eyes_centered": eyes_centered,
+            "is_centered": bool(is_centered),
+            "open_eye_status": bool(open_eye_status),
+            "is_vertical_straight": bool(is_vertical_straight),
+            "eyes_centered": bool(eyes_centered),
+            "is_bg_uniform": bool(is_bg_uniform),
+            "is_bg_bright": bool(is_bg_bright),
+            "is_valid_photo": bool(is_valid_photo)
         }
 
 

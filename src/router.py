@@ -23,5 +23,9 @@ async def classify_photo(file: UploadFile = File(...)):
         "no_glasses": not is_glasses, 
         "is_centered": result["is_centered"], 
         "open_eye_status": result["open_eye_status"], 
-        "is_vertical_straight": result["is_vertical_straight"]
+        "eyes_centered": result["eyes_centered"],
+        "is_vertical_straight": result["is_vertical_straight"],
+        "is_bg_uniform": result["is_bg_uniform"],
+        "is_bg_bright": result["is_bg_bright"],
+        "is_valid_photo": result["is_valid_photo"]
     }

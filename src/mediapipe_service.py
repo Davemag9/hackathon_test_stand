@@ -19,6 +19,12 @@ RIGHT_EYE_IDXS = [263, 387, 385, 362, 380, 373]
 TOP_CENTER_POINT_IDX = 10
 BOTTOM_CENTER_POINT_IDX = 152
 
+# Define criteria for a uniform ID photo background
+# A low standard deviation means consistent color
+CONSISTENCY_THRESHOLD_STD = 30
+# Average color should generally be bright (e.g., L > 200 in BGR scale where 255 is white)
+BRIGHTNESS_THRESHOLD_MEAN = 255/2
+
 
 def get_face_landmarks(bgr_image):
     # Convert the BGR image to RGB before processing, as MediaPipe expects RGB
@@ -264,3 +270,35 @@ def get_vertical_centerline(landmarks, img):
 def check_vertical_rotation(landmarks, img):
     angle, pA, pB = get_vertical_centerline(landmarks, img)
     return angle <= VERTICAL_ROT_ANGLE_THRESHOLD
+
+
+# background consistent color detection
+
+    # Initialize MediaPipe Selfie Segmentation
+mp_selfie_segmentation = mp.solutions.selfie_segmentation
+segmentation = mp_selfie_segmentation.SelfieSegmentation(model_selection=1)
+
+
+def extract_background(bgr_image, threshold=0.1):
+    image_rgb = cv2.cvtColor(bgr_image, cv2.COLOR_BGR2RGB)
+
+    # Process the image and get the segmentation mask
+    results = segmentation.process(image_rgb)
+    mask = results.segmentation_mask
+
+    background_mask = (mask < threshold) # Boolean mask: True for background, False for person
+    background_pixels = bgr_image[background_mask]
+    return background_pixels, mask
+
+
+def is_background_consistent(image):
+    background_pixels, mask = extract_background(image)
+
+    mean_color = np.mean(background_pixels, axis=0)
+    std_dev_color = np.std(background_pixels, axis=0)
+    max_std_dev = np.max(std_dev_color)
+
+
+    is_consistent = max_std_dev < CONSISTENCY_THRESHOLD_STD
+    is_bright_enough = np.mean(mean_color) > BRIGHTNESS_THRESHOLD_MEAN
+    return is_consistent, is_bright_enough
