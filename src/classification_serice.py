@@ -3,6 +3,8 @@ import torch
 import torch.nn as nn
 from torchvision import models, transforms
 from PIL import Image
+import os
+from pathlib import Path
 
 from .mediapipe_service import get_face_landmarks, get_center_point, get_tip_of_nose, \
     check_eyes_open, check_vertical_rotation, check_eyes_centered, is_background_consistent
@@ -18,24 +20,45 @@ def _load_model():
     global _model, _device, _transform_eval
 
     if _model is None:
-        _device = torch.device("cuda" if torch.cuda.is_available() else "cpu")
-        _model = models.resnet50(weights=models.ResNet50_Weights.IMAGENET1K_V1)
+        try:
+            # Get the path to the model file relative to this file
+            current_dir = Path(__file__).parent.parent
+            model_path = current_dir / "data" / "best_model.pth"
+            
+            print(f"Current working directory: {os.getcwd()}")
+            print(f"Model path: {model_path}")
+            print(f"Model file exists: {model_path.exists()}")
+            
+            if not model_path.exists():
+                raise FileNotFoundError(f"Model file not found at {model_path}")
+            
+            _device = torch.device("cuda" if torch.cuda.is_available() else "cpu")
+            print(f"Using device: {_device}")
+            
+            _model = models.resnet50(weights=models.ResNet50_Weights.IMAGENET1K_V1)
 
-        _model.fc = nn.Sequential(
-            nn.Dropout(0.5),
-            nn.Linear(_model.fc.in_features, 2)
-        )
+            _model.fc = nn.Sequential(
+                nn.Dropout(0.5),
+                nn.Linear(_model.fc.in_features, 2)
+            )
 
-        # Load trained weights
-        _model.load_state_dict(torch.load("data/best_model.pth", map_location=_device))
+            # Load trained weights
+            print(f"Loading model weights from {model_path}")
+            _model.load_state_dict(torch.load(str(model_path), map_location=_device, weights_only=True))
 
-        _model.to(_device)
-        _model.eval()
+            _model.to(_device)
+            _model.eval()
 
-        _transform_eval = transforms.Compose([
-            transforms.Resize((224, 224)),
-            transforms.ToTensor()
-        ])
+            _transform_eval = transforms.Compose([
+                transforms.Resize((224, 224)),
+                transforms.ToTensor()
+            ])
+            print("Model loaded successfully!")
+        except Exception as e:
+            print(f"Error loading model: {e}")
+            import traceback
+            traceback.print_exc()
+            raise
 
 
 # Load model when module is imported
@@ -127,6 +150,10 @@ def classify_image(img):
 
 
 def classify_glasses(img):
+    # Ensure model is loaded
+    if _model is None or _transform_eval is None:
+        raise RuntimeError("Model not loaded. Check server logs for errors.")
+    
     # Convert cv2 image (numpy array, BGR) to PIL Image (RGB)
     img_rgb = cv2.cvtColor(img, cv2.COLOR_BGR2RGB)
     img = Image.fromarray(img_rgb)
