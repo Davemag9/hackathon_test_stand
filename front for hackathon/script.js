@@ -130,7 +130,7 @@ sendBtn.addEventListener('click', async () => {
         const formData = new FormData();
         formData.append('file', photoBlob, 'photo.jpg');
 
-        const response = await fetch('http://127.0.0.1:8000/api/classify', {
+        const response = await fetch('https://192.168.0.237:8000/api/classify', {
             method: 'POST',
             mode: 'cors', // Explicitly request CORS
             headers: {
@@ -205,7 +205,7 @@ async function sendFrameToAPI() {
         const formData = new FormData();
         formData.append('file', blob, 'frame.jpg');
 
-        const response = await fetch('http://127.0.0.1:8000/api/classify', {
+        const response = await fetch('https://192.168.0.237:8000/api/classify', {
             method: 'POST',
             mode: 'cors',
             headers: {
@@ -371,14 +371,19 @@ function displayResults(data) {
             issues.push(mapping.label);
         }
 
-        const statusText = value === 'unknown' ? 'Unknown' : (pass ? '✓ Pass' : '✗ Fail');
+        const statusIcon = value === 'unknown' ? '?' : (pass ? '✓' : '✗');
+        const statusText = value === 'unknown' ? 'Unknown' : (pass ? 'Pass' : 'Fail');
         const statusClass = value === 'unknown' ? 'fail' : (pass ? 'pass' : 'fail');
+
+        // Check if screen is small (phone) or large (tablet/laptop)
+        const isSmallScreen = window.innerWidth <= 768;
+        const textSpan = isSmallScreen ? '' : `<span class="result-text">${statusText}</span>`;
 
         resultItems.push(`
             <div class="result-item ${statusClass}">
                 <span class="result-label">${mapping.label}:</span>
                 <span class="result-value ${statusClass}">
-                    ${statusText}
+                    <span class="result-icon">${statusIcon}</span>${textSpan}
                 </span>
             </div>
         `);
